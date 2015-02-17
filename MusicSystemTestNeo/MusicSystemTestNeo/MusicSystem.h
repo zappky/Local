@@ -1,191 +1,73 @@
 #pragma once
 
+#include "Audio.h"
+
 #include <map>
-
-#include <iostream>
-#include <string>
-
-#include "irrKlang.h"
-
-using namespace irrklang;
-
-class CAudio//provding a ease of level of control and bad pointer protection
-{
-public:
-	ISound* audio;
-	ISoundEffectControl* audioEffectControl;
-	std::string name;
-	vec3d<float> position;
-public:
-	CAudio()
-		:
-		audio(0)
-		,audioEffectControl(0)
-		,name(" ")
-	{
-	}
-	inline bool Init(ISound* pointerfromengine)
-	{
-		if(pointerfromengine != 0 )
-		{
-			audio = pointerfromengine;
-			return true;
-		}
-		return false;
-	}
-	inline void SetVolume(float volume)
-	{
-		if(audio != 0 )
-		{
-			if(volume <0)
-			{
-				volume = 0.f;
-			}else
-			{
-				while(volume >1)
-				{
-					volume *= 0.1;
-				}
-			}
-			std::cout<<volume<<std::endl;
-			audio->setVolume(volume);
-		}
-	}
-	inline float GetVolume()
-	{
-		if(audio != 0 )
-		{
-			return audio->getVolume();
-		}
-	}
-	inline bool CheckIsPaused()
-	{
-		if(audio != 0 )
-		{
-			return audio->getIsPaused();
-		}
-	}
-	inline bool CheckIsFinised()
-	{
-		if(audio != 0 )
-		{
-			return audio->isFinished();
-		}
-	}
-	inline bool CheckIsLooped()
-	{
-		if(audio != 0 )
-		{
-			return audio->isLooped();
-		}
-	}
-	inline void SetIsLooped(bool looped)
-	{
-		if(audio != 0 )
-		{
-			audio->setIsLooped(looped);
-		}
-	}
-	inline void SetIsPaused(bool paused = true)
-	{
-		if(audio != 0 )
-		{
-			audio->setIsPaused(paused);
-		}
-	}
-	inline void Stop()
-	{
-		if(audio != 0 )
-		{
-			audio->stop();
-		}
-	}
-	inline bool Drop()
-	{
-		if(audio != 0 )
-		{
-			audio->drop();
-		}
-	}
-	inline bool EnableAudioEffectControl()
-	{	
-		if(audio != 0 )
-		{
-			if(audioEffectControl == 0 )
-			{
-				audioEffectControl = audio->getSoundEffectControl();
-				return true;
-			}
-		}
-		return false;
-	}
-	inline bool DisableAllAudioEffect()
-	{
-		if(audio != 0 )
-		{
-			if(audioEffectControl != 0 )
-			{
-				audioEffectControl->disableAllEffects();
-				return true;
-			}
-		}
-		return false;	
-	}
-	inline bool EnableChorusEffect(float wetDryMix = 50.f,float depth = 10.f,float feedback = 25.f,float frequency = 1.100000024f,bool sineWaveForm = true,float delay = 16.f,int phrase = 90)
-	{	
-		if(audio != 0 )
-		{
-			if(audioEffectControl != 0 )
-			{
-				audioEffectControl->enableChorusSoundEffect(wetDryMix,depth,feedback,frequency,sineWaveForm,delay,phrase);
-				return true;
-			}
-			return false;
-		}
-	}
-	inline bool Release()
-	{
-		if(audio != 0 )
-		{
-			Drop();
-			delete this;
-			return true;
-		}
-		return false;
-	};
-	void PrintDebugInformation()
-	{
-		std::cout<<"Name: "<<name<<std::endl;
-	};
-};
 
 class CMusicSystem//the main music engine
 {
 public:
-	std::map<std::string,CAudio*> bgmList;
-	std::map<std::string,CAudio*> soundList;
+	ISoundEngine* engine;
+
+	typedef std::map<std::string,CAudio*> TAudioList;
+	TAudioList bgmList;
+	TAudioList soundList;
 	unsigned short currentBgmTrack;
 	unsigned short currentSoundTrack;
-public:
+	static CMusicSystem* instance;
+private:
+	bool allSoundPaused;
+	bool allSoundMuted;
+private:
 	CMusicSystem(void);
-	~CMusicSystem(void);
-
-	bool InsertBGMTrack(std::string filename);
-	bool InsertSoundTrack(std::string filename);
-	void PlayBGMTrack(unsigned short trackindex);
-	void PlaySoundTrack(unsigned short trackindex);
-	void SetVolume(float newVolume);
-	void Mute();
-	void Resume();
-	void Pause();
-	void TranverseBGMTrack();
-	void TranverseSoundTrack();
-
 	bool Init();
 	bool CleanUp();
-	bool Reset();
 	bool Release();
+public:
+	static CMusicSystem* GetInstance();
+	~CMusicSystem(void);
 
+	//this function only add CAudio class to be managed under bgmlist without offical register as one of bgm tracks.
+	bool RegisterAudioAsBgm(CAudio * a_audio);
+	//this function only add CAudio class to be managed under soundlist without offical register as one of sound tracks.
+	bool RegisterAudioAsSound(CAudio * a_audio);
+	//this function add CAudio class to be managed under bgmlist with offical register as one of bgm tracks.
+	bool InsertBGMTrack(std::string filename);
+	//this function add CAudio class to be managed under soundlist with offical register as one of sound tracks.
+	bool InsertSoundTrack(std::string filename);
+	//play a offically register bgm track
+	bool PlayBGMTrack(unsigned short trackindex);
+	//play a offically register sound track
+	bool PlaySoundTrack(unsigned short trackindex);
+	//mute all audio
+	bool Mute();
+	//unmute all audio
+	bool UnMute();
+	//resume all audio
+	bool Resume();
+	//pause all audio
+	bool Pause();
+	//stop all audio
+	bool StopAllSounds();
+	//traverse to next or previous officially registered bgm track
+	bool TranverseBGMTrack();
+	//traverse to next or previous officially registered sound track
+	bool TranverseSoundTrack();
+	//switch between pause or unpause all audio
+	bool ToggleAllAudioPause();
+	//switch between mute or unmute all audio
+	bool ToggleAllAudioMute();
+	//check if the audio with the passed in name is still playing
+	bool CheckAudioIsPlaying(std::string audioname);
+	//check if the audio with the passed in name is still playing
+	bool CheckAudioIsPlaying(const char* audioname);
+	//set all audio to the volume.
+	bool SetAllAudioVolume(float volume);
+	//reset the whole music system
+	bool Reset();
+	//exit the music system
+	bool Exit();
+	//print out some debug information
 	void PrintDebugInformation();
 };
 
